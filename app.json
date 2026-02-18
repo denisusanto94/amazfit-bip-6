@@ -1,0 +1,62 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 28312,
+    "appName": "MuslimJak",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "icon": "icon.png",
+    "vender": "deni susanto",
+    "description": "jadwal imsakiya dki jakarta"
+  },
+  "permissions": [
+    "device:os.geolocation",
+    "device:os.vibrator"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "4.0",
+      "target": "4.0",
+      "minVersion": "4.0"
+    }
+  },
+  "targets": {
+    "default": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/index"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        }
+      },
+      "platforms": [
+        {
+          "st": "s",
+          "dw": 390
+        },
+        {
+          "st": "b",
+          "dw": 194
+        }
+      ]
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "appName": "MuslimJak"
+    },
+    "id-ID": {
+      "appName": "MuslimJak"
+    }
+  },
+  "defaultLanguage": "en-US"
+}
