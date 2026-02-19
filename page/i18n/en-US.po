@@ -1,0 +1,26 @@
+msgid "HEADER_LOADING"
+msgstr "Prayer Schedule\nLoading..."
+
+msgid "IMSAK"
+msgstr "Imsak"
+
+msgid "SUBUH"
+msgstr "Fajr"
+
+msgid "ZUHUR"
+msgstr "Zuhur"
+
+msgid "ASAR"
+msgstr "Asar"
+
+msgid "MAGHRIB"
+msgstr "Maghrib"
+
+msgid "ISYA"
+msgstr "Isya"
+
+msgid "LOC_DEFAULT"
+msgstr "Loc: Jakarta (Default)"
+
+msgid "LOC_GPS"
+msgstr "Loc: GPS"

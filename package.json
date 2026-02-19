@@ -1,0 +1,15 @@
+{
+  "name": "muslimjak",
+  "version": "1.0.0",
+  "description": "Hello World Template",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "deni susanto",
+  "license": "ISC",
+  "devDependencies": {
+    "@zeppos/device-types": "^3.0.0"
+  },
+  "dependencies": {}
+}
