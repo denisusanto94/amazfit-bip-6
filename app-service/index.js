@@ -1,4 +1,5 @@
 import { Vibrator } from "@zos/sensor";
+import { notify } from "@zos/notification";
 import { log as Logger } from "@zos/utils";
 import imsakiyahJson from "../utils/jadwal-imsakiyah";
 
@@ -8,6 +9,17 @@ const logger = Logger.getLogger("app-service");
 const MONTH_MAP = {
     'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5,
     'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
+};
+
+const PRAYER_LABELS = {
+    imsak: "Imsak",
+    subuh: "Subuh",
+    terbit: "Terbit",
+    duha: "Duha",
+    dzuhur: "Dzuhur",
+    ashar: "Ashar",
+    maghrib: "Maghrib",
+    isya: "Isya"
 };
 
 function parseIndoDate(dateStr) {
@@ -85,23 +97,29 @@ AppService({
             // keys: imsak, subuh, terbit, duha, dzuhur, ashar, maghrib, isya
             const keys = ['imsak', 'subuh', 'terbit', 'duha', 'dzuhur', 'ashar', 'maghrib', 'isya'];
 
-            let match = false;
+            let matchKey = null;
 
             // Iterate through keys to find if any value matches currentTime
             for (let key of keys) {
                 if (schedule[key] === currentTime) {
-                    match = true;
+                    matchKey = key;
                     break;
                 }
             }
 
-            if (match) {
-                if (this.lastTriggered !== currentTime) {
-                    this.lastTriggered = currentTime;
-                    this.triggerVibration();
+            if (matchKey) {
+                const triggerKey = `${matchKey}-${currentTime}`;
+                if (this.lastTriggered !== triggerKey) {
+                    this.lastTriggered = triggerKey;
+                    this.triggerAlarm(matchKey, currentTime);
                 }
             }
         }
+    },
+
+    triggerAlarm(prayerKey, timeStr) {
+        this.triggerVibration();
+        this.sendNotification(prayerKey, timeStr);
     },
 
     triggerVibration() {
@@ -114,6 +132,21 @@ AppService({
             }, 5000); // 5 seconds
         } catch (e) {
             logger.error("Vibration error: " + e);
+        }
+    },
+
+    sendNotification(prayerKey, timeStr) {
+        const prayerLabel = PRAYER_LABELS[prayerKey] || prayerKey;
+        const message = `Sudah Memasuki Waktu ${prayerLabel} (${timeStr})`;
+        try {
+            notify({
+                title: "Pengingat Imsakiyah",
+                content: message,
+                vibrate: 0
+            });
+            logger.debug(`Notification sent for ${prayerLabel} at ${timeStr}`);
+        } catch (e) {
+            logger.error("Notification error: " + e);
         }
     }
 });
