@@ -245,13 +245,13 @@ Page({
     });
 
     // Footer
-    const footerY = DEVICE_HEIGHT - px(60);
+    const footerY = DEVICE_HEIGHT - px(80);
     const gpsWidth = px(40);
 
 
 
     this.state.widgets.btnGps = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: PADDING,
+      x: PADDING + px(20),
       y: footerY,
       w: gpsWidth,
       h: px(40),
@@ -266,15 +266,20 @@ Page({
       }
     });
 
-    this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.IMG, {
-      x: DEVICE_WIDTH - px(40) - PADDING,
+    this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: DEVICE_WIDTH - px(40) - PADDING - px(20),
       y: footerY,
       w: px(40),
       h: px(40),
-      src: lang === 'id-ID' ? 'us.png' : 'id.png',
-    });
-    this.state.widgets.btnLang.addEventListener(hmUI.event.CLICK_UP, () => {
-      this.toggleLanguage();
+      text: lang === 'id-ID' ? 'ID' : 'EN',
+      normal_color: 0xffffff,
+      press_color: 0xcccccc,
+      color: 0x000000,
+      radius: px(20),
+      text_size: px(18),
+      click_func: () => {
+        this.toggleLanguage();
+      }
     });
 
 
@@ -319,12 +324,38 @@ Page({
 
     // Update List
     const now = new Date();
-    const isToday = date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear();
-
-    let nextFound = false;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Find absolute next prayer globally
+    let globalNextKey = null;
+    let globalNextDateObj = null;
+
+    const dToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayData = this.state.imsakiyahData.find(item => item.dateObj && item.dateObj.getTime() === dToday.getTime());
+    const keysToCheck = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+
+    if (todayData) {
+      for (let k of keysToCheck) {
+        if (todayData[k]) {
+          const [h, m] = todayData[k].split(':').map(Number);
+          if ((h * 60 + m) >= currentMinutes) {
+            globalNextKey = k;
+            globalNextDateObj = dToday;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!globalNextKey) {
+      globalNextDateObj = new Date(dToday.getTime() + 86400000);
+      globalNextKey = 'imsak';
+    }
+
+    const isViewingNextDate = globalNextDateObj &&
+      date.getDate() === globalNextDateObj.getDate() &&
+      date.getMonth() === globalNextDateObj.getMonth() &&
+      date.getFullYear() === globalNextDateObj.getFullYear();
 
     if (this.state.widgets.listItems.length > 0) {
       this.state.widgets.listItems.forEach(item => {
@@ -335,13 +366,8 @@ Page({
           const timeStr = prayerTimes[item.key];
           item.time.setProperty(hmUI.prop.TEXT, timeStr);
 
-          if (isToday && !nextFound) {
-            const [h, m] = timeStr.split(':').map(Number);
-            const pMinutes = h * 60 + m;
-            if (pMinutes >= currentMinutes) {
-              color = 0x00ff00; // Green for next
-              nextFound = true;
-            }
+          if (isViewingNextDate && item.key === globalNextKey) {
+            color = 0x00ff00; // Green for next upcoming prayer
           }
         } else {
           item.time.setProperty(hmUI.prop.TEXT, "--:--");
@@ -354,7 +380,7 @@ Page({
 
     // Update Buttons
     this.state.widgets.btnGps.setProperty(hmUI.prop.TEXT, getTranslation(lang, 'BTN_GPS'));
-    this.state.widgets.btnLang.setProperty(hmUI.prop.SRC, lang === 'id-ID' ? 'us.png' : 'id.png');
+    this.state.widgets.btnLang.setProperty(hmUI.prop.TEXT, lang === 'id-ID' ? 'ID' : 'EN');
 
     this.state.widgets.location.setProperty(hmUI.prop.TEXT, locationName);
   },

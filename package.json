@@ -1,12 +1,12 @@
 {
-  "name": "helloworld",
+  "name": "imsakiyah-mas-bagong",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "denisusanto",
   "license": "ISC",
   "devDependencies": {
     "@zeppos/device-types": "^3.0.0"
