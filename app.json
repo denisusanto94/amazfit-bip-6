@@ -2,7 +2,7 @@
   "configVersion": "v3",
   "app": {
     "appId": 21472,
-    "appName": "Hello World",
+    "appName": "Imsakiyah",
     "appType": "app",
     "version": {
       "code": 1,
@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "zepp",
-    "description": "hello world app"
+    "description": "Jadwal Imsakiyah"
   },
   "permissions": [
     "data:os.device.info",
@@ -47,10 +47,10 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "Hello World"
+      "appName": "Imsakiyah"
     },
     "zh-CN": {
-      "appName": "你好世界"
+      "appName": "Imsakiyah"
     }
   },
   "defaultLanguage": "en-US"

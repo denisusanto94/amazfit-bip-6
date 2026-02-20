@@ -33,6 +33,7 @@ Page({
   build() {
     logger.debug("page build invoked");
     this.initUI();
+    this.calculateSchedule(); // Recalculate to be sure
     this.updateUI();
 
     // Update time every second
@@ -60,12 +61,7 @@ Page({
     }
   },
 
-  calculateSchedule() {
-    // zepp os Date might behave differently, but let's assume standard JS Date
-    const d = this.state.date;
-    const times = this.state.prayerCalculator.getTimes(d, [this.state.lat, this.state.lon], 7); // Jakarta is GMT+7
-    this.state.prayerTimes = times;
-  },
+
 
   initUI() {
     const { lang } = this.state;
@@ -128,7 +124,7 @@ Page({
     // Content: Imsakiyah List
     const startY = px(100);
     const itemHeight = px(30);
-    const keys = ['imsak', 'subuh', 'sunrise', 'dhuhr', 'ashar', 'maghrib', 'isha'];
+    const keys = ['imsak', 'fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
     const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
 
     this.state.widgets.listItems = [];
@@ -208,8 +204,23 @@ Page({
     });
   },
 
+  calculateSchedule() {
+    // zepp os Date might behave differently, but let's assume standard JS Date
+    const d = this.state.date;
+    logger.debug(`calculateSchedule for: ${d.toISOString()} Lat:${this.state.lat} Lon:${this.state.lon}`);
+
+    try {
+      const times = this.state.prayerCalculator.getTimes(d, [this.state.lat, this.state.lon], 7); // Jakarta is GMT+7
+      logger.debug("calculateSchedule result: " + JSON.stringify(times));
+      this.state.prayerTimes = times;
+    } catch (e) {
+      logger.error("Error calculating schedule: " + e);
+    }
+  },
+
   updateUI() {
     const { lang, date, prayerTimes, locationName } = this.state;
+    logger.debug("updateUI invoked with times: " + (prayerTimes ? "YES" : "NO"));
 
     // Update Date/Time Text
     const day = date.getDate();
@@ -224,12 +235,19 @@ Page({
     this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
 
     // Update List
-    if (prayerTimes) {
+    if (prayerTimes && this.state.widgets.listItems.length > 0) {
       this.state.widgets.listItems.forEach(item => {
         item.label.setProperty(hmUI.prop.TEXT, getTranslation(lang, item.labelKey));
         const t = prayerTimes[item.key];
-        item.time.setProperty(hmUI.prop.TEXT, t);
+        logger.debug(`Setting ${item.key} to ${t}`);
+        if (t) {
+          item.time.setProperty(hmUI.prop.TEXT, t);
+        } else {
+          item.time.setProperty(hmUI.prop.TEXT, "ERR");
+        }
       });
+    } else {
+      logger.warn("Accessing listItems without prayerTimes or empty list");
     }
 
     // Update Buttons
