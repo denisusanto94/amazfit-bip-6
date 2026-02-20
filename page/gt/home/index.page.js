@@ -2,7 +2,9 @@ import * as hmUI from "@zos/ui";
 import * as hmApp from "@zos/app";
 import { Geolocation } from "@zos/sensor";
 import { Time } from "@zos/sensor";
+import { Vibrator } from "@zos/sensor";
 import { log as Logger, px } from "@zos/utils";
+
 import { strings, getTranslation } from "../../../utils/i18n-store";
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "./index.page.s.layout";
 import imsakiyahJson from "../../../utils/jadwal-imsakiyah";
@@ -95,11 +97,44 @@ Page({
     if (this.state.widgets.time) {
       this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
     }
+
+    // Check Alarm
+    this.checkAlarm(hours, mins);
+  },
+
+  checkAlarm(hours, mins) {
+    if (this.state.prayerTimes) {
+      const currentTime = `${hours}:${mins}`;
+      // prayerTimes object: { imsak: "04:31", subuh: "04:41", ... }
+      // We only care about string values that look like times.
+      const times = Object.values(this.state.prayerTimes).filter(v => typeof v === 'string' && v.includes(':'));
+
+      if (times.includes(currentTime)) {
+        if (this.state.lastAlarm !== currentTime) {
+          this.state.lastAlarm = currentTime;
+          this.triggerVibration();
+        }
+      }
+    }
+  },
+
+  triggerVibration() {
+    logger.debug("Vibration Triggered");
+    try {
+      const vibrator = new Vibrator();
+      vibrator.start();
+
+      setTimeout(() => {
+        vibrator.stop();
+      }, 5000); // 5 seconds
+    } catch (e) {
+      logger.error("Vibration error: " + e);
+    }
   },
 
   initUI() {
     const { lang } = this.state;
-    // Clear existing widgets if any (not implemented here)
+    const PADDING = px(20);
 
     // Header: Time & Date
     this.state.widgets.time = hmUI.createWidget(hmUI.widget.TEXT, {
@@ -125,31 +160,35 @@ Page({
     });
 
     // Navigation Buttons (Prev / Next)
+    // Align with date row slightly better
+    const navY = px(45);
+    const navSize = px(40);
+
     this.state.widgets.btnPrev = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: px(10),
-      y: px(45),
-      w: px(40),
-      h: px(40),
+      x: PADDING,
+      y: navY,
+      w: navSize,
+      h: navSize,
       text: getTranslation(lang, 'NAV_PREV'),
       normal_color: 0xffffff,
       press_color: 0xcccccc,
       color: 0x000000,
-      radius: px(20),
+      radius: navSize / 2,
       click_func: () => {
         this.changeDate(-1);
       }
     });
 
     this.state.widgets.btnNext = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: DEVICE_WIDTH - px(50),
-      y: px(45),
-      w: px(40),
-      h: px(40),
+      x: DEVICE_WIDTH - navSize - PADDING,
+      y: navY,
+      w: navSize,
+      h: navSize,
       text: getTranslation(lang, 'NAV_NEXT'),
       normal_color: 0xffffff,
       press_color: 0xcccccc,
       color: 0x000000,
-      radius: px(20),
+      radius: navSize / 2,
       click_func: () => {
         this.changeDate(1);
       }
@@ -158,7 +197,6 @@ Page({
     // Content: Imsakiyah List
     const startY = px(120);
     const itemHeight = px(30);
-    // API Keys: imsak, subuh, terbit, dzuhur, ashar, maghrib, isya
     const keys = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
     const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
 
@@ -176,12 +214,14 @@ Page({
       align_h: hmUI.align.CENTER_H,
     });
 
+    const colWidth = (DEVICE_WIDTH - (PADDING * 2)) / 2;
+
     keys.forEach((key, index) => {
       // Label
       const labelWidget = hmUI.createWidget(hmUI.widget.TEXT, {
-        x: px(20),
+        x: PADDING,
         y: startY + (index * itemHeight),
-        w: DEVICE_WIDTH / 2 - px(20),
+        w: colWidth,
         h: itemHeight,
         text: getTranslation(lang, labels[index]),
         color: 0xffffff,
@@ -191,9 +231,9 @@ Page({
 
       // Time
       const timeWidget = hmUI.createWidget(hmUI.widget.TEXT, {
-        x: DEVICE_WIDTH / 2,
+        x: PADDING + colWidth,
         y: startY + (index * itemHeight),
-        w: DEVICE_WIDTH / 2 - px(20),
+        w: colWidth,
         h: itemHeight,
         text: '--:--',
         color: 0xffffff,
@@ -206,11 +246,14 @@ Page({
 
     // Footer
     const footerY = DEVICE_HEIGHT - px(60);
+    const gpsWidth = px(120);
+    const langWidth = px(70);
+    const exitSize = px(40);
 
     this.state.widgets.btnGps = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: px(10),
+      x: PADDING,
       y: footerY,
-      w: px(120),
+      w: gpsWidth,
       h: px(40),
       text: getTranslation(lang, 'BTN_GPS'),
       normal_color: 0xffffff,
@@ -224,9 +267,9 @@ Page({
     });
 
     this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: DEVICE_WIDTH - px(80),
+      x: DEVICE_WIDTH - langWidth - PADDING,
       y: footerY,
-      w: px(70),
+      w: langWidth,
       h: px(40),
       text: getTranslation(lang, 'BTN_LANG'),
       normal_color: 0xffffff,
@@ -238,17 +281,17 @@ Page({
       }
     });
 
-    // Exit Button
+    // Exit Button (SAFE Center)
     this.state.widgets.btnExit = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: (DEVICE_WIDTH - px(40)) / 2,
+      x: (DEVICE_WIDTH - exitSize) / 2,
       y: footerY,
-      w: px(40),
-      h: px(40),
+      w: exitSize,
+      h: exitSize,
       text: 'X',
       normal_color: 0xff0000,
       press_color: 0xcc0000,
       color: 0xffffff,
-      radius: px(20),
+      radius: exitSize / 2,
       text_size: px(24),
       click_func: () => {
         hmApp.exit();
