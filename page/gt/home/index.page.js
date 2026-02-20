@@ -1,5 +1,5 @@
 import * as hmUI from "@zos/ui";
-import * as hmApp from "@zos/app";
+
 import { Geolocation } from "@zos/sensor";
 import { Time } from "@zos/sensor";
 import { Vibrator } from "@zos/sensor";
@@ -196,7 +196,7 @@ Page({
 
     // Content: Imsakiyah List
     const startY = px(120);
-    const itemHeight = px(30);
+    const itemHeight = px(40);
     const keys = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
     const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
 
@@ -225,7 +225,7 @@ Page({
         h: itemHeight,
         text: getTranslation(lang, labels[index]),
         color: 0xffffff,
-        text_size: px(20),
+        text_size: px(28),
         align_h: hmUI.align.LEFT,
       });
 
@@ -237,7 +237,7 @@ Page({
         h: itemHeight,
         text: '--:--',
         color: 0xffffff,
-        text_size: px(20),
+        text_size: px(28),
         align_h: hmUI.align.RIGHT,
       });
 
@@ -246,9 +246,9 @@ Page({
 
     // Footer
     const footerY = DEVICE_HEIGHT - px(60);
-    const gpsWidth = px(120);
-    const langWidth = px(70);
-    const exitSize = px(40);
+    const gpsWidth = px(40);
+
+
 
     this.state.widgets.btnGps = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: PADDING,
@@ -259,44 +259,25 @@ Page({
       normal_color: 0xffffff,
       press_color: 0xcccccc,
       color: 0x000000,
-      radius: px(10),
-      text_size: px(16),
+      radius: gpsWidth / 2,
+      text_size: px(24),
       click_func: () => {
         this.fetchGps();
       }
     });
 
-    this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: DEVICE_WIDTH - langWidth - PADDING,
+    this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.IMG, {
+      x: DEVICE_WIDTH - px(40) - PADDING,
       y: footerY,
-      w: langWidth,
+      w: px(40),
       h: px(40),
-      text: getTranslation(lang, 'BTN_LANG'),
-      normal_color: 0xffffff,
-      press_color: 0xcccccc,
-      color: 0x000000,
-      radius: px(10),
-      click_func: () => {
-        this.toggleLanguage();
-      }
+      src: lang === 'id-ID' ? 'us.png' : 'id.png',
+    });
+    this.state.widgets.btnLang.addEventListener(hmUI.event.CLICK_UP, () => {
+      this.toggleLanguage();
     });
 
-    // Exit Button (SAFE Center)
-    this.state.widgets.btnExit = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: (DEVICE_WIDTH - exitSize) / 2,
-      y: footerY,
-      w: exitSize,
-      h: exitSize,
-      text: 'X',
-      normal_color: 0xff0000,
-      press_color: 0xcc0000,
-      color: 0xffffff,
-      radius: exitSize / 2,
-      text_size: px(24),
-      click_func: () => {
-        hmApp.exit();
-      }
-    });
+
   },
 
   updateScheduleFromData() {
@@ -373,7 +354,7 @@ Page({
 
     // Update Buttons
     this.state.widgets.btnGps.setProperty(hmUI.prop.TEXT, getTranslation(lang, 'BTN_GPS'));
-    this.state.widgets.btnLang.setProperty(hmUI.prop.TEXT, lang === 'id-ID' ? 'EN' : 'ID');
+    this.state.widgets.btnLang.setProperty(hmUI.prop.SRC, lang === 'id-ID' ? 'us.png' : 'id.png');
 
     this.state.widgets.location.setProperty(hmUI.prop.TEXT, locationName);
   },
