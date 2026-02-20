@@ -44,7 +44,7 @@ export class PrayerTimes {
 
   // set time format
   setFormat(format) {
-    this.timeFormat = format; 
+    this.timeFormat = format;
   }
 
   // calculate prayer times
@@ -53,21 +53,21 @@ export class PrayerTimes {
     this.lng = 1 * coords[1];
     this.elv = coords[2] ? 1 * coords[2] : 0;
     this.timeFormat = format || this.timeFormat;
-    
-    if (date.constructor === Date)
+
+    if (date instanceof Date || (typeof date === 'object' && typeof date.getFullYear === 'function'))
       date = [date.getFullYear(), date.getMonth() + 1, date.getDate()];
-    
+
     this.jDate = this.julian(date[0], date[1], date[2]) - this.lng / (15 * 24);
 
     return this.computeTimes(timezone, dst);
   }
-  
+
   // convert float time to the given format (see timeFormats)
   getFormattedTime(time, format, suffixes) {
     if (isNaN(time)) return this.invalidTime;
-    
+
     if (format === 'Float') return time;
-    
+
     suffixes = suffixes || this.timeSuffixes;
 
     time = this.fixHour(time + 0.5 / 60);  // add 0.5 minutes to round
@@ -75,7 +75,7 @@ export class PrayerTimes {
     var minutes = Math.floor((time - hours) * 60);
     var suffix = (format === '12h') ? suffixes[hours < 12 ? 0 : 1] : '';
     var hour = (format === '24h') ? this.twoDigitsFormat(hours) : ((hours + 11) % 12 + 1);
-    
+
     return hour + ':' + this.twoDigitsFormat(minutes) + (suffix ? ' ' + suffix : '');
   }
 
@@ -93,11 +93,11 @@ export class PrayerTimes {
 
     // add midnight time
     times.midnight = (this.setting.midnight === 'Jafari') ?
-        times.sunset + this.timeDiff(times.sunset, times.fajr) / 2 :
-        times.sunset + this.timeDiff(times.sunset, times.sunrise) / 2;
+      times.sunset + this.timeDiff(times.sunset, times.fajr) / 2 :
+      times.sunset + this.timeDiff(times.sunset, times.sunrise) / 2;
 
     times = this.tuneTimes(times);
-    
+
     return this.modifyFormats(times);
   }
 
@@ -105,38 +105,38 @@ export class PrayerTimes {
     times = this.dayPortion(times);
     var params = this.setting;
 
-    var imsak   = this.sunAngleTime(this.eval(params.imsak), times.imsak, 'ccw');
-    var fajr    = this.sunAngleTime(this.eval(params.fajr), times.fajr, 'ccw');
-    var sunrise = this.sunAngleTime(this.riseSetAngle(), times.sunrise, 'ccw');  
-    var dhuhr   = this.midDay(times.dhuhr);
-    var asr     = this.asrTime(this.asrFactor(params.asr), times.asr);
-    var sunset  = this.sunAngleTime(this.riseSetAngle(), times.sunset);;
+    var imsak = this.sunAngleTime(this.eval(params.imsak), times.imsak, 'ccw');
+    var fajr = this.sunAngleTime(this.eval(params.fajr), times.fajr, 'ccw');
+    var sunrise = this.sunAngleTime(this.riseSetAngle(), times.sunrise, 'ccw');
+    var dhuhr = this.midDay(times.dhuhr);
+    var asr = this.asrTime(this.asrFactor(params.asr), times.asr);
+    var sunset = this.sunAngleTime(this.riseSetAngle(), times.sunset);;
     var maghrib = this.sunAngleTime(this.eval(params.maghrib), times.maghrib);
-    var isha    = this.sunAngleTime(this.eval(params.isha), times.isha);
+    var isha = this.sunAngleTime(this.eval(params.isha), times.isha);
 
     return {
-      imsak: imsak, fajr: fajr, sunrise: sunrise, dhuhr: dhuhr, 
+      imsak: imsak, fajr: fajr, sunrise: sunrise, dhuhr: dhuhr,
       asr: asr, sunset: sunset, maghrib: maghrib, isha: isha
     };
   }
 
   adjustTimes(times, timezone, dst) {
     var params = this.setting;
-    for (var i in times) { 
-      times[i] += timezone - this.lng / 15; 
+    for (var i in times) {
+      times[i] += timezone - this.lng / 15;
     }
-    
-    if (params.highLats !== 'None') 
+
+    if (params.highLats !== 'None')
       times = this.adjustHighLats(times);
-      
-    if (this.isMin(params.imsak)) 
+
+    if (this.isMin(params.imsak))
       times.imsak = times.fajr - this.eval(params.imsak) / 60;
-    if (this.isMin(params.maghrib)) 
+    if (this.isMin(params.maghrib))
       times.maghrib = times.sunset + this.eval(params.maghrib) / 60;
-    if (this.isMin(params.isha)) 
+    if (this.isMin(params.isha))
       times.isha = times.maghrib + this.eval(params.isha) / 60;
-    
-    times.dhuhr += this.eval(params.dhuhr) / 60; 
+
+    times.dhuhr += this.eval(params.dhuhr) / 60;
 
     return times;
   }
@@ -152,61 +152,61 @@ export class PrayerTimes {
     var angle = 0.0347 * Math.sqrt(this.elv); // an approximation
     return 0.833 + angle;
   }
-  
+
   tuneTimes(times) {
     for (var i in times)
-      times[i] += this.offset[i] / 60; 
+      times[i] += this.offset[i] / 60;
     return times;
   }
 
   modifyFormats(times) {
     for (var i in times)
-      times[i] = this.getFormattedTime(times[i], this.timeFormat); 
+      times[i] = this.getFormattedTime(times[i], this.timeFormat);
     return times;
   }
 
   adjustHighLats(times) {
     var params = this.setting;
-    var nightTime = this.timeDiff(times.sunset, times.sunrise); 
+    var nightTime = this.timeDiff(times.sunset, times.sunrise);
 
     times.imsak = this.adjustHLTime(times.imsak, times.sunrise, this.eval(params.imsak), nightTime, 'ccw');
-    times.fajr  = this.adjustHLTime(times.fajr, times.sunrise, this.eval(params.fajr), nightTime, 'ccw');
-    times.isha  = this.adjustHLTime(times.isha, times.sunset, this.eval(params.isha), nightTime);
+    times.fajr = this.adjustHLTime(times.fajr, times.sunrise, this.eval(params.fajr), nightTime, 'ccw');
+    times.isha = this.adjustHLTime(times.isha, times.sunset, this.eval(params.isha), nightTime);
     times.maghrib = this.adjustHLTime(times.maghrib, times.sunset, this.eval(params.maghrib), nightTime);
-    
+
     return times;
   }
 
   adjustHLTime(time, base, angle, night, direction) {
     var portion = this.nightPortion(angle, night);
-    var timeDiff = (direction === 'ccw') ? 
-      this.timeDiff(time, base) : 
+    var timeDiff = (direction === 'ccw') ?
+      this.timeDiff(time, base) :
       this.timeDiff(base, time);
-    if (isNaN(time) || timeDiff > portion) 
+    if (isNaN(time) || timeDiff > portion)
       time = base + (direction === 'ccw' ? -portion : portion);
     return time;
   }
 
   nightPortion(angle, night) {
     var method = this.setting.highLats;
-    var portion = 1/2 // Midnight
+    var portion = 1 / 2 // Midnight
     if (method === 'AngleBased')
-      portion = 1/60 * angle;
+      portion = 1 / 60 * angle;
     if (method === 'OneSeventh')
-      portion = 1/7;
+      portion = 1 / 7;
     return portion * night;
   }
 
   dayPortion(times) {
-    for (var i in times) 
-      times[i] /= 24; 
+    for (var i in times)
+      times[i] /= 24;
     return times;
   }
 
   sunAngleTime(angle, time, direction) {
     var decl = this.sunPosition(this.jDate + time).declination;
     var noon = this.midDay(time);
-    var t = 1/15 * this.arccos((-this.sin(angle) - this.sin(decl) * this.sin(this.lat)) / (this.cos(decl) * this.cos(this.lat)));
+    var t = 1 / 15 * this.arccos((-this.sin(angle) - this.sin(decl) * this.sin(this.lat)) / (this.cos(decl) * this.cos(this.lat)));
     return noon + (direction === 'ccw' ? -t : t);
   }
 
@@ -226,10 +226,10 @@ export class PrayerTimes {
     var e = 23.439 - 0.00000036 * D;
 
     var RA = this.arctan2(this.cos(e) * this.sin(L), this.cos(L)) / 15;
-    var eqt = q/15 - this.fixHour(RA);
+    var eqt = q / 15 - this.fixHour(RA);
     var decl = this.arcsin(this.sin(e) * this.sin(L));
 
-    return {declination: decl, equation: eqt};
+    return { declination: decl, equation: eqt };
   }
 
   julian(year, month, day) {
@@ -256,7 +256,7 @@ export class PrayerTimes {
   arctan(d) { return this.rtd(Math.atan(d)); }
   arctan2(y, x) { return this.rtd(Math.atan2(y, x)); }
 
-  arccot(x) { return this.rtd(Math.atan(1/x)); }
+  arccot(x) { return this.rtd(Math.atan(1 / x)); }
 
   fixAngle(a) { return this.fix(a, 360); }
   fixHour(a) { return this.fix(a, 24); }
@@ -271,8 +271,8 @@ export class PrayerTimes {
   }
 
   isMin(arg) { return (arg instanceof Number || typeof arg === 'number'); }
-  
+
   eval(str) { return 1 * (str + '').split(/[^0-9.+-]/)[0]; }
-  
+
   twoDigitsFormat(num) { return (num < 10) ? '0' + num : num; }
 }

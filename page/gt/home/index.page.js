@@ -1,39 +1,75 @@
 import * as hmUI from "@zos/ui";
+import * as hmApp from "@zos/app";
 import { Geolocation } from "@zos/sensor";
 import { Time } from "@zos/sensor";
 import { log as Logger, px } from "@zos/utils";
-import { PrayerTimes } from "../../../utils/prayer-times";
 import { strings, getTranslation } from "../../../utils/i18n-store";
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "./index.page.s.layout";
+import imsakiyahJson from "../../../utils/jadwal-imsakiyah";
 
 const logger = Logger.getLogger("helloworld");
 const TIME_ID = "time_text";
 const DATE_ID = "date_text";
 
+const MONTH_MAP = {
+  'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5,
+  'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
+};
+
+function parseIndoDate(dateStr) {
+  // "19 Februari 2026"
+  const parts = dateStr.split(' ');
+  if (parts.length < 3) return null;
+  const day = parseInt(parts[0]);
+  const month = MONTH_MAP[parts[1]];
+  const year = parseInt(parts[2]);
+  if (month === undefined) return null;
+  return new Date(year, month, day);
+}
+
 Page({
   state: {
     date: new Date(),
-    lat: -6.2088, // Jakarta
+    lat: -6.2088, // Jakarta defaults
     lon: 106.8456,
     lang: 'id-ID',
     locationName: 'DKI Jakarta',
     prayerTimes: null,
+    imsakiyahData: [], // Store full month data
     widgets: {},
     geolocation: null,
   },
 
   onInit() {
     logger.debug("page onInit invoked");
-    this.state.prayerCalculator = new PrayerTimes('MWL');
-    this.state.prayerCalculator.adjust({ fajr: 20, isha: 18 }); // Indonesia Kemenag style (approx)
+    hmUI.setStatusBarVisible(false);
+    this.loadImsakiyahData();
+  },
 
-    this.calculateSchedule();
+  loadImsakiyahData() {
+    try {
+      const data = imsakiyahJson;
+      if (data && data.jadwal_imsakiyah) {
+        this.state.locationName = data.kota || 'DKI Jakarta';
+        // Pre-process data
+        this.state.imsakiyahData = data.jadwal_imsakiyah.map(item => {
+          return {
+            ...item,
+            dateObj: parseIndoDate(item.tanggal)
+          };
+        });
+        logger.debug("Loaded " + this.state.imsakiyahData.length + " items");
+      }
+    } catch (e) {
+      logger.error("Error loading JSON: " + e);
+      this.state.locationName = "Load Error";
+    }
   },
 
   build() {
     logger.debug("page build invoked");
     this.initUI();
-    this.calculateSchedule(); // Recalculate to be sure
+    this.updateScheduleFromData();
     this.updateUI();
 
     // Update time every second
@@ -60,8 +96,6 @@ Page({
       this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
     }
   },
-
-
 
   initUI() {
     const { lang } = this.state;
@@ -90,7 +124,7 @@ Page({
       align_h: hmUI.align.CENTER_H,
     });
 
-    // Navigation Buttons (Prev / Next) - Absolute positioning near header
+    // Navigation Buttons (Prev / Next)
     this.state.widgets.btnPrev = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: px(10),
       y: px(45),
@@ -122,9 +156,10 @@ Page({
     });
 
     // Content: Imsakiyah List
-    const startY = px(100);
+    const startY = px(120);
     const itemHeight = px(30);
-    const keys = ['imsak', 'fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    // API Keys: imsak, subuh, terbit, dzuhur, ashar, maghrib, isya
+    const keys = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
     const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
 
     this.state.widgets.listItems = [];
@@ -202,31 +237,55 @@ Page({
         this.toggleLanguage();
       }
     });
+
+    // Exit Button
+    this.state.widgets.btnExit = hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: (DEVICE_WIDTH - px(40)) / 2,
+      y: footerY,
+      w: px(40),
+      h: px(40),
+      text: 'X',
+      normal_color: 0xff0000,
+      press_color: 0xcc0000,
+      color: 0xffffff,
+      radius: px(20),
+      text_size: px(24),
+      click_func: () => {
+        hmApp.exit();
+      }
+    });
   },
 
-  calculateSchedule() {
-    // zepp os Date might behave differently, but let's assume standard JS Date
+  updateScheduleFromData() {
     const d = this.state.date;
-    logger.debug(`calculateSchedule for: ${d.toISOString()} Lat:${this.state.lat} Lon:${this.state.lon}`);
+    const dZero = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dTime = dZero.getTime();
 
-    try {
-      const times = this.state.prayerCalculator.getTimes(d, [this.state.lat, this.state.lon], 7); // Jakarta is GMT+7
-      logger.debug("calculateSchedule result: " + JSON.stringify(times));
-      this.state.prayerTimes = times;
-    } catch (e) {
-      logger.error("Error calculating schedule: " + e);
+    // Find matching date
+    if (this.state.imsakiyahData) {
+      const schedule = this.state.imsakiyahData.find(item => {
+        return item.dateObj && item.dateObj.getTime() === dTime;
+      });
+
+      if (schedule) {
+        this.state.prayerTimes = schedule;
+        logger.debug("Found schedule for " + d.toDateString());
+      } else {
+        this.state.prayerTimes = null;
+        logger.debug("No schedule for " + d.toDateString());
+      }
+    } else {
+      this.state.prayerTimes = null;
     }
   },
 
   updateUI() {
     const { lang, date, prayerTimes, locationName } = this.state;
-    logger.debug("updateUI invoked with times: " + (prayerTimes ? "YES" : "NO"));
-
     // Update Date/Time Text
-    const day = date.getDate();
-    const month = date.toLocaleString('default', { month: 'short' });
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
-    const dateStr = `${day} ${month} ${year}`;
+    const dateStr = `${day}/${month}/${year}`;
 
     this.state.widgets.date.setProperty(hmUI.prop.TEXT, dateStr);
 
@@ -235,19 +294,38 @@ Page({
     this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
 
     // Update List
-    if (prayerTimes && this.state.widgets.listItems.length > 0) {
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    let nextFound = false;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    if (this.state.widgets.listItems.length > 0) {
       this.state.widgets.listItems.forEach(item => {
         item.label.setProperty(hmUI.prop.TEXT, getTranslation(lang, item.labelKey));
-        const t = prayerTimes[item.key];
-        logger.debug(`Setting ${item.key} to ${t}`);
-        if (t) {
-          item.time.setProperty(hmUI.prop.TEXT, t);
+
+        let color = 0xffffff;
+        if (prayerTimes && prayerTimes[item.key]) {
+          const timeStr = prayerTimes[item.key];
+          item.time.setProperty(hmUI.prop.TEXT, timeStr);
+
+          if (isToday && !nextFound) {
+            const [h, m] = timeStr.split(':').map(Number);
+            const pMinutes = h * 60 + m;
+            if (pMinutes >= currentMinutes) {
+              color = 0x00ff00; // Green for next
+              nextFound = true;
+            }
+          }
         } else {
-          item.time.setProperty(hmUI.prop.TEXT, "ERR");
+          item.time.setProperty(hmUI.prop.TEXT, "--:--");
         }
+
+        item.label.setProperty(hmUI.prop.COLOR, color);
+        item.time.setProperty(hmUI.prop.COLOR, color);
       });
-    } else {
-      logger.warn("Accessing listItems without prayerTimes or empty list");
     }
 
     // Update Buttons
@@ -261,7 +339,7 @@ Page({
     const newDate = new Date(this.state.date);
     newDate.setDate(newDate.getDate() + delta);
     this.state.date = newDate;
-    this.calculateSchedule();
+    this.updateScheduleFromData();
     this.updateUI();
   },
 
@@ -271,23 +349,8 @@ Page({
   },
 
   fetchGps() {
-    this.state.locationName = getTranslation(this.state.lang, 'LOADING');
+    // GPS not fully implemented with new API yet
+    this.state.locationName = "API: Jakarta Only";
     this.updateUI();
-
-    const geolocation = new Geolocation();
-    this.state.geolocation = geolocation;
-
-    geolocation.start();
-
-    geolocation.onCurrentChange((val) => {
-      if (val && val.latitude) {
-        this.state.lat = val.latitude;
-        this.state.lon = val.longitude;
-        this.state.locationName = `GPS: ${val.latitude.toFixed(2)}, ${val.longitude.toFixed(2)}`;
-        this.calculateSchedule();
-        this.updateUI();
-        geolocation.stop();
-      }
-    });
   }
 });
