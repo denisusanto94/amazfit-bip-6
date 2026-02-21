@@ -10,13 +10,14 @@ export const strings = {
         ASHAR: 'Ashar',
         MAGHRIB: 'Maghrib',
         ISYA: 'Isya',
-        BTN_GPS: '🔍',
+        BTN_GPS: '📡',
         BTN_LANG: 'ID',
         LOCATION_JAKARTA: 'DKI Jakarta',
         LOADING: 'Loading...',
         NAV_PREV: '<',
         NAV_NEXT: '>',
         NOTIFICATION_ENTERED: 'Entering time: ',
+        BTN_MINIMIZE: '🏠',
     },
     'id-ID': {
         HEADING_TIME: 'Waktu',
@@ -29,13 +30,14 @@ export const strings = {
         ASHAR: 'Ashar',
         MAGHRIB: 'Maghrib',
         ISYA: 'Isya',
-        BTN_GPS: '🔍',
+        BTN_GPS: '📡',
         BTN_LANG: 'EN',
         LOCATION_JAKARTA: 'DKI Jakarta',
         LOADING: 'Memuat...',
         NAV_PREV: '<',
         NAV_NEXT: '>',
         NOTIFICATION_ENTERED: 'Sudah Memasuki Waktu ',
+        BTN_MINIMIZE: '🏠',
     }
 };
 

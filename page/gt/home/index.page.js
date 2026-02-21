@@ -1,4 +1,5 @@
 import * as hmUI from "@zos/ui";
+import { exit } from "@zos/router";
 
 import { Geolocation } from "@zos/sensor";
 import { Time } from "@zos/sensor";
@@ -94,8 +95,9 @@ Page({
     const date = new Date();
     const hours = date.getHours().toString().padStart(2, '0');
     const mins = date.getMinutes().toString().padStart(2, '0');
+    const secs = date.getSeconds().toString().padStart(2, '0');
     if (this.state.widgets.time) {
-      this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
+      this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}:${secs}`);
     }
 
     // Check Alarm
@@ -116,7 +118,6 @@ Page({
 
           const prayerLabel = getTranslation(this.state.lang, currentPrayerKey.toUpperCase());
           this.showNotification(prayerLabel);
-          this.triggerVibration();
         }
       }
     }
@@ -127,9 +128,21 @@ Page({
     const prefix = getTranslation(lang, 'NOTIFICATION_ENTERED');
     const text = `${prefix}${prayerName}`;
 
-    logger.debug("Showing notification: " + text);
+    logger.debug("Showing notification & vibration: " + text);
 
     if (this.state.widgets.notification) {
+      // 1. Setup Vibrator
+      try {
+        if (!this.state.vibrator) {
+          this.state.vibrator = new Vibrator();
+        }
+        this.state.vibrator.stop(); // Stop any previous session
+        this.state.vibrator.start();
+      } catch (e) {
+        logger.error("Vibrator error: " + e);
+      }
+
+      // 2. Show UI
       this.state.widgets.notification.setProperty(hmUI.prop.TEXT, text);
       this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, true);
       this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, true);
@@ -138,10 +151,10 @@ Page({
         clearTimeout(this.state.notificationTimer);
       }
 
+      // 3. Set Auto-dismiss (5 seconds)
       this.state.notificationTimer = setTimeout(() => {
-        this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, false);
-        this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, false);
-      }, 5000); // Hide after 5 seconds
+        this.dismissNotification();
+      }, 5000);
     } else {
       hmUI.showToast({
         text: text
@@ -149,17 +162,26 @@ Page({
     }
   },
 
-  triggerVibration() {
-    logger.debug("Vibration Triggered");
-    try {
-      const vibrator = new Vibrator();
-      vibrator.start();
+  dismissNotification() {
+    // Hide UI
+    if (this.state.widgets.notificationBg) {
+      this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, false);
+      this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, false);
+    }
 
-      setTimeout(() => {
-        vibrator.stop();
-      }, 5000); // 5 seconds
+    // Stop Vibration
+    try {
+      if (this.state.vibrator) {
+        this.state.vibrator.stop();
+      }
     } catch (e) {
-      logger.error("Vibration error: " + e);
+      logger.error("Stop vibrator error: " + e);
+    }
+
+    // Clear Timer
+    if (this.state.notificationTimer) {
+      clearTimeout(this.state.notificationTimer);
+      this.state.notificationTimer = null;
     }
   },
 
@@ -297,6 +319,22 @@ Page({
       }
     });
 
+    this.state.widgets.btnMinimize = hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: (DEVICE_WIDTH - px(40)) / 2,
+      y: footerY,
+      w: px(40),
+      h: px(40),
+      text: getTranslation(lang, 'BTN_MINIMIZE'),
+      normal_color: 0xffffff,
+      press_color: 0xcccccc,
+      color: 0x000000,
+      radius: px(20),
+      text_size: px(24),
+      click_func: () => {
+        exit();
+      }
+    });
+
     this.state.widgets.btnLang = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: DEVICE_WIDTH - px(40) - PADDING - px(20),
       y: footerY,
@@ -340,11 +378,7 @@ Page({
 
     // Tap to dismiss
     this.state.widgets.notificationBg.addEventListener(hmUI.event.CLICK_UP, () => {
-      this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, false);
-      this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, false);
-      if (this.state.notificationTimer) {
-        clearTimeout(this.state.notificationTimer);
-      }
+      this.dismissNotification();
     });
 
   },
@@ -384,7 +418,8 @@ Page({
 
     const hours = date.getHours().toString().padStart(2, '0');
     const mins = date.getMinutes().toString().padStart(2, '0');
-    this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}`);
+    const secs = date.getSeconds().toString().padStart(2, '0');
+    this.state.widgets.time.setProperty(hmUI.prop.TEXT, `${hours}:${mins}:${secs}`);
 
     // Update List
     const now = new Date();
@@ -444,6 +479,7 @@ Page({
 
     // Update Buttons
     this.state.widgets.btnGps.setProperty(hmUI.prop.TEXT, getTranslation(lang, 'BTN_GPS'));
+    this.state.widgets.btnMinimize.setProperty(hmUI.prop.TEXT, getTranslation(lang, 'BTN_MINIMIZE'));
     this.state.widgets.btnLang.setProperty(hmUI.prop.TEXT, lang === 'id-ID' ? 'ID' : 'EN');
 
     this.state.widgets.location.setProperty(hmUI.prop.TEXT, locationName);
