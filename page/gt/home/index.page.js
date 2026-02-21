@@ -105,16 +105,47 @@ Page({
   checkAlarm(hours, mins) {
     if (this.state.prayerTimes) {
       const currentTime = `${hours}:${mins}`;
-      // prayerTimes object: { imsak: "04:31", subuh: "04:41", ... }
-      // We only care about string values that look like times.
-      const times = Object.values(this.state.prayerTimes).filter(v => typeof v === 'string' && v.includes(':'));
 
-      if (times.includes(currentTime)) {
+      // Find which prayer it is
+      const keysToCheck = ['imsak', 'subuh', 'terbit', 'duha', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+      const currentPrayerKey = keysToCheck.find(key => this.state.prayerTimes[key] === currentTime);
+
+      if (currentPrayerKey) {
         if (this.state.lastAlarm !== currentTime) {
           this.state.lastAlarm = currentTime;
+
+          const prayerLabel = getTranslation(this.state.lang, currentPrayerKey.toUpperCase());
+          this.showNotification(prayerLabel);
           this.triggerVibration();
         }
       }
+    }
+  },
+
+  showNotification(prayerName) {
+    const { lang } = this.state;
+    const prefix = getTranslation(lang, 'NOTIFICATION_ENTERED');
+    const text = `${prefix}${prayerName}`;
+
+    logger.debug("Showing notification: " + text);
+
+    if (this.state.widgets.notification) {
+      this.state.widgets.notification.setProperty(hmUI.prop.TEXT, text);
+      this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, true);
+      this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, true);
+
+      if (this.state.notificationTimer) {
+        clearTimeout(this.state.notificationTimer);
+      }
+
+      this.state.notificationTimer = setTimeout(() => {
+        this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, false);
+        this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, false);
+      }, 5000); // Hide after 5 seconds
+    } else {
+      hmUI.showToast({
+        text: text
+      });
     }
   },
 
@@ -197,8 +228,8 @@ Page({
     // Content: Imsakiyah List
     const startY = px(120);
     const itemHeight = px(40);
-    const keys = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
-    const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
+    const keys = ['imsak', 'subuh', 'terbit', 'duha', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+    const labels = ['IMSAK', 'SUBUH', 'TERBIT', 'DUHA', 'DZUHUR', 'ASHAR', 'MAGHRIB', 'ISYA'];
 
     this.state.widgets.listItems = [];
 
@@ -282,6 +313,39 @@ Page({
       }
     });
 
+    // Notification Overlay (Hidden by default)
+    this.state.widgets.notificationBg = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: 0,
+      y: 0,
+      w: DEVICE_WIDTH,
+      h: DEVICE_HEIGHT,
+      color: 0x000000,
+      alpha: 180,
+      visible: false,
+    });
+
+    this.state.widgets.notification = hmUI.createWidget(hmUI.widget.TEXT, {
+      x: px(20),
+      y: DEVICE_HEIGHT / 2 - px(60),
+      w: DEVICE_WIDTH - px(40),
+      h: px(120),
+      text: '',
+      color: 0xffff00,
+      text_size: px(30),
+      align_h: hmUI.align.CENTER_H,
+      align_v: hmUI.align.CENTER_V,
+      text_style: hmUI.text_style.WRAP,
+      visible: false,
+    });
+
+    // Tap to dismiss
+    this.state.widgets.notificationBg.addEventListener(hmUI.event.CLICK_UP, () => {
+      this.state.widgets.notificationBg.setProperty(hmUI.prop.VISIBLE, false);
+      this.state.widgets.notification.setProperty(hmUI.prop.VISIBLE, false);
+      if (this.state.notificationTimer) {
+        clearTimeout(this.state.notificationTimer);
+      }
+    });
 
   },
 
@@ -332,7 +396,7 @@ Page({
 
     const dToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayData = this.state.imsakiyahData.find(item => item.dateObj && item.dateObj.getTime() === dToday.getTime());
-    const keysToCheck = ['imsak', 'subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+    const keysToCheck = ['imsak', 'subuh', 'terbit', 'duha', 'dzuhur', 'ashar', 'maghrib', 'isya'];
 
     if (todayData) {
       for (let k of keysToCheck) {

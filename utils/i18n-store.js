@@ -5,6 +5,7 @@ export const strings = {
         IMSAK: 'Imsak',
         SUBUH: 'Subuh',
         TERBIT: 'Sunrise',
+        DUHA: 'Duha',
         DZUHUR: 'Dzuhur',
         ASHAR: 'Ashar',
         MAGHRIB: 'Maghrib',
@@ -15,6 +16,7 @@ export const strings = {
         LOADING: 'Loading...',
         NAV_PREV: '<',
         NAV_NEXT: '>',
+        NOTIFICATION_ENTERED: 'Entering time: ',
     },
     'id-ID': {
         HEADING_TIME: 'Waktu',
@@ -22,6 +24,7 @@ export const strings = {
         IMSAK: 'Imsak',
         SUBUH: 'Subuh',
         TERBIT: 'Terbit',
+        DUHA: 'Duha',
         DZUHUR: 'Dzuhur',
         ASHAR: 'Ashar',
         MAGHRIB: 'Maghrib',
@@ -32,6 +35,7 @@ export const strings = {
         LOADING: 'Memuat...',
         NAV_PREV: '<',
         NAV_NEXT: '>',
+        NOTIFICATION_ENTERED: 'Sudah Memasuki Waktu ',
     }
 };
 
