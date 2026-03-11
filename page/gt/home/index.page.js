@@ -1,9 +1,8 @@
 import * as hmUI from "@zos/ui";
 import { exit } from "@zos/router";
 
-import { Geolocation } from "@zos/sensor";
-import { Time } from "@zos/sensor";
-import { Vibrator } from "@zos/sensor";
+import { Geolocation, Time, Vibrator } from "@zos/sensor";
+import { setPageBrightTime, resetPageBrightTime, pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
 import { log as Logger, px } from "@zos/utils";
 
 import { strings, getTranslation } from "../../../utils/i18n-store";
@@ -41,12 +40,12 @@ Page({
     imsakiyahData: [], // Store full month data
     widgets: {},
     geolocation: null,
+    isLoading: true,
   },
 
   onInit() {
     logger.debug("page onInit invoked");
     hmUI.setStatusBarVisible(false);
-    this.loadImsakiyahData();
   },
 
   loadImsakiyahData() {
@@ -71,9 +70,54 @@ Page({
 
   build() {
     logger.debug("page build invoked");
+
+    // 1. Initial background to prevent black screen delay
+    // Using dark gray instead of 0x000000 (pure black) so AMOLED screens don't turn off pixels
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: 0,
+      y: 0,
+      w: DEVICE_WIDTH,
+      h: DEVICE_HEIGHT,
+      color: 0x111111
+    });
+
+    // 2. Full screen loading text UI initially drawn
+    this.state.widgets.loadingText = hmUI.createWidget(hmUI.widget.TEXT, {
+      x: 0,
+      y: 0,
+      w: DEVICE_WIDTH,
+      h: DEVICE_HEIGHT,
+      text: 'Sedang Memuat...', // Generating data
+      color: 0xffaa00, // orange color
+      text_size: px(30),
+      align_h: hmUI.align.CENTER_H,
+      align_v: hmUI.align.CENTER_V,
+    });
+
     this.initUI();
-    this.updateScheduleFromData();
-    this.updateUI();
+    this.updateClock();
+
+    // Hide real UI while loading
+    this.toggleRealUI(false);
+
+    try {
+      // Force screen wake state here AFTER UI is created
+      setPageBrightTime({ brightTime: 60000 });
+      pauseDropWristScreenOff({ duration: 60000 });
+    } catch(e) {
+      logger.error('display error', e);
+    }
+
+    // Load data asynchronously so it doesn't block the initial visual frame
+    setTimeout(() => {
+      this.loadImsakiyahData();
+      this.updateScheduleFromData();
+      this.updateUI();
+
+      this.state.isLoading = false;
+      this.state.widgets.loadingText.setProperty(hmUI.prop.VISIBLE, false); // Hide loader
+      this.toggleRealUI(true); // Show actual UI
+    }, 500); // give it a few ms to render the loader screen first
 
     // Update time every second
     this.state.timer = setInterval(() => {
@@ -83,6 +127,11 @@ Page({
 
   onDestroy() {
     logger.debug("page onDestroy invoked");
+    try {
+      resetPageBrightTime();
+      resetDropWristScreenOff();
+    } catch(e) {}
+
     if (this.state.geolocation) {
       this.state.geolocation.stop();
     }
@@ -381,6 +430,27 @@ Page({
       this.dismissNotification();
     });
 
+  },
+
+  toggleRealUI(visible) {
+    if(!this.state.widgets.time) return;
+
+    this.state.widgets.time.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.date.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.btnPrev.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.btnNext.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.location.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.btnGps.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.btnMinimize.setProperty(hmUI.prop.VISIBLE, visible);
+    this.state.widgets.btnLang.setProperty(hmUI.prop.VISIBLE, visible);
+
+    // hide/show list times
+    if (this.state.widgets.listItems && this.state.widgets.listItems.length > 0) {
+      this.state.widgets.listItems.forEach(item => {
+        item.label.setProperty(hmUI.prop.VISIBLE, visible);
+        item.time.setProperty(hmUI.prop.VISIBLE, visible);
+      });
+    }
   },
 
   updateScheduleFromData() {
